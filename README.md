@@ -192,4 +192,6 @@ public class UIUtils {
 
 	相对于px的优点：就按dp值来区分，大部分Android手机的最小宽度dp值都是360dp，这样就大大减少了dimen.xml文件的数量
 
-	tips：Android Studio 提供自动生成dimens文件的插件 ScreenMatch
+	tips1：Android Studio 提供自动生成dimens文件的插件 ScreenMatch
+	tips2：通常会结合自定义view以及dimens-dp+最小限定符来解决大部分屏幕适配问题
+	tips3：还需要针对异性屏幕做相应的适配
