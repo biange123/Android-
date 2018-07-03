@@ -56,5 +56,140 @@
 ## 三、两种常用的解决方案
 ### 1、通过自定义布局组件来完成
 	核心原理是根据一个参照分辨率进行布局，然后在代码中提取当前机器的分辨率，通过比例换算得出比例系数，再通过重新测量的方式来达到适配的效果
+核心代码如下：<br>
+```Java
 
-### 2、
+public class ScreenAdaptationRelaLayout extends RelativeLayout {
+	public ScreenAdaptationRelaLayout(Context context) {
+	    super(context);
+	}
+
+	public ScreenAdaptationRelaLayout(Context context, AttributeSet attrs) {
+	    super(context, attrs);
+	}
+
+	public ScreenAdaptationRelaLayout(Context context, AttributeSet attrs, int defStyleAttr) {
+	    super(context, attrs, defStyleAttr);
+	}
+
+	static boolean isFlag = true;
+
+	@Override
+	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+
+	    if(isFlag){
+		int count = this.getChildCount();
+		float scaleX =  UIUtils.getInstance(this.getContext()).getHorizontalScaleValue();
+		float scaleY =  UIUtils.getInstance(this.getContext()).getVerticalScaleValue();
+
+		Log.i("testbarry","x系数:"+scaleX);
+		Log.i("testbarry","y系数:"+scaleY);
+		for (int i = 0;i < count;i++){
+		    View child = this.getChildAt(i);
+		    //代表的是当前空间的所有属性列表
+		    LayoutParams layoutParams = (LayoutParams) child.getLayoutParams();
+		    layoutParams.width = (int) (layoutParams.width * scaleX);
+		    layoutParams.height = (int) (layoutParams.height * scaleY);
+		    layoutParams.rightMargin = (int) (layoutParams.rightMargin * scaleX);
+		    layoutParams.leftMargin = (int) (layoutParams.leftMargin * scaleX);
+		    layoutParams.topMargin = (int) (layoutParams.topMargin * scaleY);
+		    layoutParams.bottomMargin = (int) (layoutParams.bottomMargin * scaleY);
+		}
+		isFlag = false;
+	    }
+
+	    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+	}
+
+	@Override
+	protected void onDraw(Canvas canvas) {
+	    super.onDraw(canvas);
+		}
+	}
+}
+```
+
+```Java
+public class UIUtils {
+
+	private Context context;
+
+	private static UIUtils utils ;
+
+	public static UIUtils getInstance(Context context){
+	    if(utils == null){
+		utils = new UIUtils(context);
+	    }
+	    return utils;
+	}
+
+	//参照宽高
+	public final float STANDARD_WIDTH = 720;
+	public final float STANDARD_HEIGHT = 1232;
+
+	//当前设备实际宽高
+	public float displayMetricsWidth ;
+	public float displayMetricsHeight ;
+
+	private  final String DIMEN_CLASS = "com.android.internal.R$dimen";
+
+	private UIUtils(Context context){
+	    this.context = context;
+	    //
+	    WindowManager windowManager = (WindowManager) 		context.getSystemService(Context.WINDOW_SERVICE);
+
+	    //加载当前界面信息
+	    DisplayMetrics displayMetrics = new DisplayMetrics();
+	    windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+
+	    if(displayMetricsWidth == 0.0f || displayMetricsHeight == 0.0f){
+		//获取状态框信息
+		int systemBarHeight = getValue(context,"system_bar_height",48);
+
+		if(displayMetrics.widthPixels > displayMetrics.heightPixels){
+		    this.displayMetricsWidth = displayMetrics.heightPixels;
+		    this.displayMetricsHeight = displayMetrics.widthPixels - systemBarHeight;
+		}else{
+		    this.displayMetricsWidth = displayMetrics.widthPixels;
+		    this.displayMetricsHeight = displayMetrics.heightPixels - systemBarHeight;
+		}
+
+	    }
+	}
+
+	//对外提供系数
+	public float getHorizontalScaleValue(){
+	    return displayMetricsWidth / STANDARD_WIDTH;
+	}
+
+	public float getVerticalScaleValue(){
+
+	    Log.i("testbarry","displayMetricsHeight:"+displayMetricsHeight);
+	    return displayMetricsHeight / STANDARD_HEIGHT;
+	}
+
+	public int getValue(Context context,String systemid,int defValue) {
+
+	    try {
+		Class<?> clazz = Class.forName(DIMEN_CLASS);
+		Object r = clazz.newInstance();
+		Field field = clazz.getField(systemid);
+		int x = (int) field.get(r);
+		return context.getResources().getDimensionPixelOffset(x);
+
+	    } catch (Exception e) {
+	       return defValue;
+	    }
+}
+```
+
+### 2、通过dimens-px给各个分辨率屏幕分配dimens.xml
+	原理：给不同屏幕分辨率的设备各自写一套dimens.xml文件。首先要根据一个基准分辨率（例如1280*720），将宽度分成720份，
+		 高度分成1280份，生成相应的dimen.xml文件，然后在根据比例生成不同屏幕分辨率设备的对应的dimens.xml文件
+	缺点：Android屏幕分辨率种类太多，而且会存在虚拟导航栏按键的适配问题
+### 3、通过dimens-dp+最小宽度限定符，给不同的屏幕分配dimens.xml
+	原理：核心原理跟px类似，不过px是通过像素的匹配屏幕，而dp是通过dp值来匹配屏幕的，相当于是对px做了一次转化
+
+	相对于px的优点：就按dp值来区分，大部分Android手机的最小宽度dp值都是360dp，这样就大大减少了dimen.xml文件的数量
+
+	tips：Android Studio 提供自动生成dimens文件的插件 ScreenMatch
